@@ -1,0 +1,152 @@
+<!-- traer.js Example: cloth.html -->
+<!doctype html>
+
+<html>
+<head>
+
+<!-- Include library -->
+<script src="../src/traer.js"></script>
+
+<!-- Model a 2d grid of spring-connected particles -->
+<script>
+
+// Size of canvas
+var CANVAS_WIDTH = 400;
+var CANVAS_HEIGHT = 400;
+
+// Size of grid
+var GRID_SIZE = 10;
+
+// Physics constants
+var PHYS_GRAVITY = 0.1;
+var PHYS_DRAG = 0.01;
+var SPRING_STRENGTH = 0.2;
+var SPRING_DAMPING = 0.1;
+
+// Pause between frames of animation
+var FRAME_DELAY = 10;
+
+// Globals
+var physics; // ParticleSystem
+var particles; // array of Particles
+var canvas; // HTML5 canvas element
+var ctx; // 2d drawing context of canvas element
+var mouseX = null; // last user x mouse coordinate
+var mouseY = null; // last user y mouse coordinate
+var movingParticle = null; // reference to particle user is currently dragging
+
+// Init
+function init() {
+
+	// Init canvas
+	canvas = document.getElementById('main');
+	canvas.style.height = CANVAS_HEIGHT + 'px';
+	canvas.style.width = CANVAS_WIDTH + 'px';
+	ctx = canvas.getContext('2d');
+	ctx.fillStyle = 'black';
+
+	// Start tracking mouse coords on mousedown
+	canvas.onmousedown = function(e) {
+		movingParticle = e.shiftKey ? particles[0][0] : particles[0][GRID_SIZE - 1];
+		mouseX = e.clientX;
+		mouseY = e.clientY;
+		canvas.onmousemove(e);
+	}
+
+	// Stop tracking mouse coords on mouseup
+	canvas.onmouseup = function(e) {
+		mouseX = null;
+		mouseY = null;
+	}
+
+	// Continue tracking mouse coords if mouse is down
+	canvas.onmousemove = function(e) {
+		if (mouseX === null || mouseY === null) {
+			return;
+		}
+		mouseX = e.clientX;
+		mouseY = e.clientY;
+		mouseX -= canvas.offsetLeft;
+		mouseY -= canvas.offsetTop;
+		movingParticle.position.set(mouseX, mouseY, 0);
+		movingParticle.velocity.clear();
+	}
+
+	// Init particle system
+	physics = new ParticleSystem(PHYS_GRAVITY, PHYS_DRAG);
+
+	// Init grid of particles
+	particles = new Array(GRID_SIZE);
+	for (var i = 0; i < particles.length; i++) particles[i] = new Array(GRID_SIZE);
+	var gridStepX = ((CANVAS_WIDTH / 2) / GRID_SIZE);
+	var gridStepY = ((CANVAS_HEIGHT / 2) / GRID_SIZE);
+
+	// Make particles
+	for (var i = 0; i < GRID_SIZE; i++) {
+		for (var j = 0; j < GRID_SIZE; j++) {
+			particles[i][j] = physics.makeParticle(0.2, j * gridStepX + (CANVAS_WIDTH / 4), i * gridStepY + 20, 0.0);
+			if (j > 0) {
+				physics.makeSpring(particles[i][j - 1], particles[i][j], SPRING_STRENGTH, SPRING_DAMPING, gridStepX);
+			}
+		}
+	}
+
+	// Make springs between particles
+	for (var j = 0; j < GRID_SIZE; j++) {
+		for (var i = 1; i < GRID_SIZE; i++) {
+			physics.makeSpring(particles[i - 1][j], particles[i][j], SPRING_STRENGTH, SPRING_DAMPING, gridStepY);
+		}
+	}
+
+
+	// Make the top left and top right particles fixed (not affected by forces)
+	particles[0][0].makeFixed();
+	particles[0][GRID_SIZE - 1].makeFixed();
+
+	// Begin rendering
+	setInterval(draw, FRAME_DELAY);
+
+}
+
+function draw() {
+
+	// Evaluate physics
+	physics.tick();
+
+	// Clear canvas frame
+	ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+	// Draw lines between all particles
+	for (var i = 0; i < GRID_SIZE; i++) {
+		ctx.beginPath();
+		ctx.moveTo(particles[i][0].position.x, particles[i][0].position.y);
+    	ctx.lineTo(particles[i][0].position.x, particles[i][0].position.y);
+		for (var j = 0; j < GRID_SIZE; j++) {
+			ctx.lineTo(particles[i][j].position.x, particles[i][j].position.y);
+		}
+		ctx.lineTo(particles[i][GRID_SIZE - 1].position.x, particles[i][GRID_SIZE - 1].position.y);
+		ctx.stroke();
+  	}
+	for (var j = 0; j < GRID_SIZE; j++) {
+		ctx.beginPath();
+		ctx.moveTo(particles[0][j].position.x, particles[0][j].position.y);
+		ctx.lineTo(particles[0][j].position.x, particles[0][j].position.y);
+		for (var i = 0; i < GRID_SIZE; i++) {
+			ctx.lineTo(particles[i][j].position.x, particles[i][j].position.y);
+		}
+		ctx.lineTo(particles[GRID_SIZE - 1][j].position.x, particles[GRID_SIZE - 1][j].position.y);
+		ctx.stroke();
+	}
+}
+
+</script>
+</head>
+
+<body onload="init()">
+<h3>Cloth</h3>
+<canvas id="main" width="400" height="400" style="border:1px solid black;"></canvas>
+<p>Click to move right corner of cloth. Shift-click to move left corner.</p>
+<p><i>Ported from <a href="http://www.cs.princeton.edu/~traer/">traer.physics</a> (for <a href="http://processing.org/">Processing</a> applets) to HTML5 & JavaScript</i></p>
+</body>
+
+</html>
