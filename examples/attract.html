@@ -1,0 +1,119 @@
+<!-- traer.js Example: cloth.html -->
+<!doctype html>
+
+<html>
+<head>
+
+<!-- Include library -->
+<script src="../src/traer.js"></script>
+
+<!-- Model a 2d grid of spring-connected particles -->
+<script>
+
+// Size of canvas
+var CANVAS_WIDTH = 400;
+var CANVAS_HEIGHT = 400;
+
+// Size of grid
+var GRID_SIZE = 10;
+
+// Physics constants
+var PHYS_GRAVITY = 0;
+var PHYS_DRAG = 0.01;
+var SPRING_STRENGTH = 0.2;
+var SPRING_DAMPING = 0.1;
+
+// Pause between frames of animation
+var FRAME_DELAY = 10;
+
+// Globals
+var physics; // ParticleSystem
+var particles; // array of Particles
+var canvas; // HTML5 canvas element
+var ctx; // 2d drawing context of canvas element
+var mouseX = null; // last user x mouse coordinate
+var mouseY = null; // last user y mouse coordinate
+var small = null; // reference to small particle
+var big = null; // reference to big particle
+var movingParticle = null; // reference to particle user is currently dragging
+
+// Init
+function init() {
+
+	// Init canvas
+	canvas = document.getElementById('main');
+	canvas.style.height = CANVAS_HEIGHT + 'px';
+	canvas.style.width = CANVAS_WIDTH + 'px';
+	ctx = canvas.getContext('2d');
+	ctx.fillStyle = 'black';
+
+	// Start tracking mouse coords on mousedown
+	canvas.onmousedown = function(e) {
+		movingParticle = e.shiftKey ? small : big;
+		mouseX = e.clientX;
+		mouseY = e.clientY;
+		canvas.onmousemove(e);
+	}
+
+	// Stop tracking mouse coords on mouseup
+	canvas.onmouseup = function(e) {
+		mouseX = null;
+		mouseY = null;
+	}
+
+	// Continue tracking mouse coords if mouse is down
+	canvas.onmousemove = function(e) {
+		if (mouseX === null || mouseY === null) {
+			return;
+		}
+		mouseX = e.clientX;
+		mouseY = e.clientY;
+		mouseX -= canvas.offsetLeft;
+		mouseY -= canvas.offsetTop;
+		movingParticle.position.set(mouseX, mouseY, 0);
+		movingParticle.velocity.clear();
+	}
+
+	// Init particle system
+	physics = new ParticleSystem(PHYS_GRAVITY, PHYS_DRAG);
+
+	// Init particles
+	big = physics.makeParticle(2.0, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2 - 100, 0.0);
+	small = physics.makeParticle(0.4, CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2, 0.0);
+
+	// Make attraction
+	physics.makeAttraction(big, small, -50.0, 100.0);
+
+	// Begin rendering
+	setInterval(draw, FRAME_DELAY);
+
+}
+
+function draw() {
+
+	// Evaluate physics
+	physics.tick();
+
+	// Clear canvas frame
+	ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+	// Draw masses
+	ctx.beginPath();
+	ctx.arc(big.position.x, big.position.y, 50, 0, Math.PI*2, true);
+	ctx.stroke();
+	ctx.beginPath();
+	ctx.arc(small.position.x, small.position.y, 10, 0, Math.PI*2, true);
+	ctx.stroke();
+
+}
+
+</script>
+</head>
+
+<body onload="init();">
+<h3>Attraction</h3>
+<canvas id="main" width="400" height="400" style="border:1px solid black;"></canvas>
+<p>Click to move big mass. Shift-click to move small mass.</p>
+</body>
+
+</html>
